@@ -1,23 +1,39 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../domain/models/photo_entry.dart';
 
 class PhotoSlide extends StatelessWidget {
-  final File file;
+  final PhotoEntry photo;
+  final Size screenSize;
 
-  const PhotoSlide({
-    super.key,
-    required this.file,
-  });
+  const PhotoSlide({super.key, required this.photo, required this.screenSize});
+
+  /// Creates a ResizeImage provider optimized for the screen size.
+  /// This significantly speeds up decoding on slower devices.
+  static ImageProvider createOptimizedProvider(File file, Size screenSize) {
+    // Use the larger dimension to ensure the image covers the screen
+    // Adding some buffer for quality (1.2x)
+    final targetSize = (screenSize.longestSide * 1.2).toInt();
+    return ResizeImage(
+      FileImage(file),
+      width: targetSize,
+      height: targetSize,
+      policy: ResizeImagePolicy.fit,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Use ResizeImage for faster decoding - loads image at screen resolution
+    final imageProvider = createOptimizedProvider(photo.file, screenSize);
+    
     return Stack(
       fit: StackFit.expand,
       children: [
         // 1. Blurred Background
-        Image.file(
-          file,
+        Image(
+          image: imageProvider,
           fit: BoxFit.cover,
           gaplessPlayback: true,
         ),
@@ -30,10 +46,24 @@ class PhotoSlide extends StatelessWidget {
         
         // 2. Main Image
         Center(
-          child: Image.file(
-            file,
+          child: Image(
+            image: imageProvider,
             fit: BoxFit.contain,
             gaplessPlayback: true,
+          ),
+        ),
+        
+        // 3. Debug Info (Optional)
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: Text(
+            photo.date.toString().split('.')[0],
+            style: const TextStyle(
+              color: Colors.white54, 
+              fontSize: 12,
+              shadows: [Shadow(blurRadius: 2, color: Colors.black)],
+            ),
           ),
         ),
       ],

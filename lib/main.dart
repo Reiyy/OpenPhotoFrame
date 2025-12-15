@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,9 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Hide Status Bar and Navigation Bar (Immersive Mode)
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   // Load Config
   final configService = JsonConfigService();
