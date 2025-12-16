@@ -1,32 +1,48 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
 
+import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/playlist_strategy.dart';
 import '../../domain/interfaces/sync_provider.dart';
 import '../../domain/interfaces/photo_repository.dart';
 import '../../domain/models/photo_entry.dart';
 
+/// Factory function type that creates a SyncProvider from current config
+typedef SyncProviderFactory = SyncProvider Function();
+
 class PhotoService {
-  final SyncProvider _syncProvider;
+  final SyncProviderFactory _syncProviderFactory;
   final PlaylistStrategy _playlistStrategy;
   final PhotoRepository _repository;
+  final ConfigProvider _configProvider;
   final _log = Logger('PhotoService');
 
   bool _isInitialized = false;
+  bool _syncLoopRunning = false;
+  
+  // Sync state management
+  bool _isSyncing = false;
+  bool _cancelRequested = false;
+  Completer<void>? _currentSyncCompleter;
   
   // History management
   final List<PhotoEntry> _history = [];
   int _historyIndex = -1;
 
   PhotoService({
-    required SyncProvider syncProvider,
+    required SyncProviderFactory syncProviderFactory,
     required PlaylistStrategy playlistStrategy,
     required PhotoRepository repository,
-  })  : _syncProvider = syncProvider,
+    required ConfigProvider configProvider,
+  })  : _syncProviderFactory = syncProviderFactory,
         _playlistStrategy = playlistStrategy,
-        _repository = repository;
+        _repository = repository,
+        _configProvider = configProvider;
 
   Stream<void> get onPhotosChanged => _repository.onPhotosChanged;
+  
+  /// Returns true if a sync is currently in progress
+  bool get isSyncing => _isSyncing;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -42,20 +58,90 @@ class PhotoService {
   }
 
   void _startBackgroundSync() {
-    // Run sync periodically or once?
-    // For now, run once on start, then maybe every hour.
+    if (_syncLoopRunning) return;
+    _syncLoopRunning = true;
+    
     Future.doWhile(() async {
-      try {
-        await _syncProvider.sync();
-        // Repository watcher will pick up changes automatically
-      } catch (e) {
-        _log.warning("Sync failed, retrying later...", e);
+      // Read current config values (they might change via settings)
+      final intervalMinutes = _configProvider.syncIntervalMinutes;
+      
+      // If interval is 0, sync is disabled
+      if (intervalMinutes <= 0) {
+        _log.info("Auto-sync is disabled. Checking again in 1 minute...");
+        await Future.delayed(const Duration(minutes: 1));
+        return true;
       }
       
-      // Wait 1 hour before next sync
-      await Future.delayed(const Duration(hours: 1));
+      // Skip if a sync is already running (e.g., manual sync from settings)
+      if (_isSyncing) {
+        _log.info("Sync already in progress, skipping scheduled sync");
+        await Future.delayed(Duration(minutes: intervalMinutes));
+        return true;
+      }
+      
+      await _executeSync();
+      
+      // Wait for configured interval before next sync
+      await Future.delayed(Duration(minutes: intervalMinutes));
       return true;
     });
+  }
+  
+  /// Triggers a manual sync. If a sync is already running, it will be cancelled first.
+  /// Returns a Future that completes when the new sync is done.
+  Future<void> triggerSync() async {
+    _log.info("Manual sync triggered");
+    
+    // If a sync is already running, request cancellation and wait for it
+    if (_isSyncing) {
+      _log.info("Cancelling current sync...");
+      _cancelRequested = true;
+      
+      // Wait for the current sync to finish
+      if (_currentSyncCompleter != null) {
+        await _currentSyncCompleter!.future;
+      }
+    }
+    
+    // Now execute the new sync
+    await _executeSync();
+  }
+  
+  /// Internal method that actually executes the sync
+  Future<void> _executeSync() async {
+    if (_isSyncing) return; // Double-check
+    
+    _isSyncing = true;
+    _cancelRequested = false;
+    _currentSyncCompleter = Completer<void>();
+    
+    final deleteOrphaned = _configProvider.deleteOrphanedFiles;
+    
+    try {
+      // Create a fresh SyncProvider with current config settings
+      final syncProvider = _syncProviderFactory();
+      _log.info("Starting sync (delete orphaned: $deleteOrphaned)");
+      await syncProvider.sync(deleteOrphanedFiles: deleteOrphaned);
+      
+      // Save timestamp of successful sync
+      _configProvider.lastSuccessfulSync = DateTime.now();
+      await _configProvider.save();
+      
+      _log.info("Sync completed successfully");
+      // Repository watcher will pick up changes automatically
+    } catch (e) {
+      if (_cancelRequested) {
+        _log.info("Sync was cancelled");
+      } else {
+        _log.warning("Sync failed", e);
+        rethrow;
+      }
+    } finally {
+      _isSyncing = false;
+      _cancelRequested = false;
+      _currentSyncCompleter?.complete();
+      _currentSyncCompleter = null;
+    }
   }
 
   PhotoEntry? nextPhoto() {

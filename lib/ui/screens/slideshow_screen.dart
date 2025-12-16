@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../domain/interfaces/config_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
+import 'settings_screen.dart';
 
 class SlideshowScreen extends StatefulWidget {
   const SlideshowScreen({super.key});
@@ -83,7 +85,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
 
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    final config = context.read<ConfigProvider>();
+    final slideDuration = Duration(seconds: config.slideDurationSeconds);
+    _timer = Timer.periodic(slideDuration, (timer) {
       _nextSlide();
     });
   }
@@ -109,6 +113,17 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     
     // Restart timer after interaction
     _startTimer();
+  }
+
+  void _openSettings() {
+    _timer?.cancel(); // Stop auto-advance while in settings
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    ).then((_) {
+      // Restart timer when returning from settings
+      _startTimer();
+    });
   }
 
   Future<void> _transitionTo(PhotoEntry photo) async {
@@ -147,9 +162,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     }
 
     // Create controller for new slide
+    final config = context.read<ConfigProvider>();
     final controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: config.transitionDurationMs),
     );
 
     final newItem = _SlideItem(
@@ -262,7 +278,8 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
                   print("Action: Tap Previous");
                   _manualNavigation(false); // Left 25% -> Previous
                 } else {
-                  print("Action: Tap Ignored (Center area)");
+                  print("Action: Open Settings");
+                  _openSettings();
                 }
               },
               onHorizontalDragEnd: (details) {

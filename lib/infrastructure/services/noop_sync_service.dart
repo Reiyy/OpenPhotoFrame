@@ -8,7 +8,7 @@ class NoOpSyncService implements SyncProvider {
   String get id => 'noop';
 
   @override
-  Future<void> sync() async {
+  Future<void> sync({bool deleteOrphanedFiles = false}) async {
     _log.info("No sync source configured. Skipping sync.");
   }
 }

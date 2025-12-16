@@ -68,39 +68,61 @@ class OpenPhotoFrameApp extends StatelessWidget {
           dispose: (_, repo) => repo.dispose(),
         ),
         
-        // SyncProvider needs StorageProvider and Config
-        ProxyProvider2<StorageProvider, ConfigProvider, SyncProvider>(
-          update: (_, storage, config, __) {
-            final type = config.activeSourceType;
-            final sourceConfig = config.getSourceConfig(type);
+        // 2. Application Services (Dependent on Infrastructure)
+        // Note: SyncProvider is created dynamically via factory to pick up config changes
+        ProxyProvider3<StorageProvider, PlaylistStrategy, PhotoRepository, PhotoService>(
+          update: (context, storage, playlist, repo, __) {
+            final config = context.read<ConfigProvider>();
+            
+            // Factory function that creates a SyncProvider with current config
+            SyncProvider createSyncProvider() {
+              final type = config.activeSourceType;
+              final sourceConfig = config.getSourceConfig(type);
 
-            if (type == 'nextcloud_link') {
-              return NextcloudSyncService.fromPublicLink(
-                sourceConfig['url'] ?? '',
-                storage,
-              );
+              if (type == 'nextcloud_link') {
+                return NextcloudSyncService.fromPublicLink(
+                  sourceConfig['url'] ?? '',
+                  storage,
+                );
+              }
+              
+              return NoOpSyncService();
             }
             
-            return NoOpSyncService();
+            return PhotoService(
+              syncProviderFactory: createSyncProvider,
+              playlistStrategy: playlist,
+              repository: repo,
+              configProvider: config,
+            );
           },
-        ),
-
-        // 2. Application Services (Dependent on Infrastructure)
-        ProxyProvider3<SyncProvider, PlaylistStrategy, PhotoRepository, PhotoService>(
-          update: (_, sync, playlist, repo, __) => PhotoService(
-            syncProvider: sync,
-            playlistStrategy: playlist,
-            repository: repo,
-          ),
           dispose: (_, service) => service.dispose(),
         ),
       ],
       child: MaterialApp(
         title: 'OpenPhotoFrame',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        themeMode: ThemeMode.dark,
+        darkTheme: ThemeData(
+          brightness: Brightness.dark,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.dark,
+          ),
           useMaterial3: true,
-          scaffoldBackgroundColor: Colors.black, // Dark background for photos
+          scaffoldBackgroundColor: Colors.black,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: Colors.black,
         ),
         home: const SlideshowScreen(),
       ),

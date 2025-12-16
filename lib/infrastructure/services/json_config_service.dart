@@ -8,11 +8,17 @@ import '../../domain/interfaces/config_provider.dart';
 class JsonConfigService implements ConfigProvider {
   final _log = Logger('JsonConfigService');
   Map<String, dynamic> _config = {};
+  File? _configFile;
 
   @override
   Future<void> load() async {
     try {
-      // 1. Determine Config Path
+      // 1. Load asset config as base (contains all defaults)
+      final defaultJsonString = await rootBundle.loadString('assets/config.json');
+      _config = json.decode(defaultJsonString);
+      _log.info("Loaded default config from assets");
+      
+      // 2. Determine user config path
       final dir = await getApplicationDocumentsDirectory();
       // Use a subfolder on Desktop to keep things tidy
       final configDir = (Platform.isLinux || Platform.isWindows || Platform.isMacOS)
@@ -23,20 +29,18 @@ class JsonConfigService implements ConfigProvider {
         await configDir.create(recursive: true);
       }
 
-      final configFile = File('${configDir.path}/config.json');
+      _configFile = File('${configDir.path}/config.json');
 
-      // 2. Load or Create
-      if (await configFile.exists()) {
-        _log.info("Loading user config from ${configFile.path}");
-        final jsonString = await configFile.readAsString();
-        _config = json.decode(jsonString);
-      } else {
-        _log.info("No user config found. Creating default at ${configFile.path}");
-        final jsonString = await rootBundle.loadString('assets/config.json');
-        _config = json.decode(jsonString);
+      // 3. Load user config and merge over defaults
+      if (await _configFile!.exists()) {
+        _log.info("Loading user config from ${_configFile!.path}");
+        final userJsonString = await _configFile!.readAsString();
+        final userConfig = json.decode(userJsonString) as Map<String, dynamic>;
         
-        // Write default config to disk so user can edit it
-        await configFile.writeAsString(jsonString);
+        // Deep merge: user config overwrites defaults
+        _mergeConfig(_config, userConfig);
+      } else {
+        _log.info("No user config found at ${_configFile!.path}");
       }
 
       _log.info("Config loaded successfully. Active source: $activeSourceType");
@@ -45,13 +49,96 @@ class JsonConfigService implements ConfigProvider {
       rethrow;
     }
   }
+  
+  /// Recursively merges [overlay] into [base], modifying [base] in place.
+  void _mergeConfig(Map<String, dynamic> base, Map<String, dynamic> overlay) {
+    for (final key in overlay.keys) {
+      if (base[key] is Map<String, dynamic> && overlay[key] is Map<String, dynamic>) {
+        _mergeConfig(base[key] as Map<String, dynamic>, overlay[key] as Map<String, dynamic>);
+      } else {
+        base[key] = overlay[key];
+      }
+    }
+  }
 
   @override
-  String get activeSourceType => _config['active_source'] ?? 'unknown';
+  Future<void> save() async {
+    if (_configFile == null) {
+      _log.warning("Cannot save config: config file not initialized");
+      return;
+    }
+    try {
+      final jsonString = const JsonEncoder.withIndent('  ').convert(_config);
+      await _configFile!.writeAsString(jsonString);
+      _log.info("Config saved successfully");
+    } catch (e) {
+      _log.severe("Failed to save config", e);
+    }
+  }
+
+  @override
+  String get activeSourceType => _config['active_source'] ?? '';
+  
+  @override
+  set activeSourceType(String value) {
+    _config['active_source'] = value;
+  }
 
   @override
   Map<String, dynamic> getSourceConfig(String type) {
     final sources = _config['sources'] as Map<String, dynamic>?;
-    return sources?[type] ?? {};
+    return Map<String, dynamic>.from(sources?[type] ?? {});
+  }
+  
+  @override
+  void setSourceConfig(String type, Map<String, dynamic> config) {
+    _config['sources'] ??= <String, dynamic>{};
+    (_config['sources'] as Map<String, dynamic>)[type] = config;
+  }
+  
+  // Slideshow settings with defaults
+  @override
+  int get slideDurationSeconds => _config['slide_duration_seconds'] ?? 600;
+  
+  @override
+  set slideDurationSeconds(int value) {
+    _config['slide_duration_seconds'] = value;
+  }
+  
+  @override
+  int get transitionDurationMs => _config['transition_duration_ms'] ?? 2000;
+  
+  @override
+  set transitionDurationMs(int value) {
+    _config['transition_duration_ms'] = value;
+  }
+  
+  // Sync settings
+  @override
+  int get syncIntervalMinutes => _config['sync_interval_minutes'] ?? 15;
+  
+  @override
+  set syncIntervalMinutes(int value) {
+    _config['sync_interval_minutes'] = value;
+  }
+  
+  @override
+  bool get deleteOrphanedFiles => _config['delete_orphaned_files'] ?? true;
+  
+  @override
+  set deleteOrphanedFiles(bool value) {
+    _config['delete_orphaned_files'] = value;
+  }
+  
+  @override
+  DateTime? get lastSuccessfulSync {
+    final timestamp = _config['last_successful_sync'];
+    if (timestamp == null) return null;
+    return DateTime.tryParse(timestamp);
+  }
+  
+  @override
+  set lastSuccessfulSync(DateTime? value) {
+    _config['last_successful_sync'] = value?.toIso8601String();
   }
 }
