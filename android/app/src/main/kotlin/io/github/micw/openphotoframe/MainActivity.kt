@@ -1,4 +1,4 @@
-package com.example.open_photo_frame
+package io.github.micw.openphotoframe
 
 import io.flutter.embedding.android.FlutterActivity
 

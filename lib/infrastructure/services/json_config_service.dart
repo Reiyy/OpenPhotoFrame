@@ -141,4 +141,12 @@ class JsonConfigService implements ConfigProvider {
   set lastSuccessfulSync(DateTime? value) {
     _config['last_successful_sync'] = value?.toIso8601String();
   }
+  
+  @override
+  bool get autostartOnBoot => _config['autostart_on_boot'] ?? false;
+  
+  @override
+  set autostartOnBoot(bool value) {
+    _config['autostart_on_boot'] = value;
+  }
 }

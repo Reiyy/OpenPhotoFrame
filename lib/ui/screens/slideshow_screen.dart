@@ -235,12 +235,27 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     }
 
     if (_slides.isEmpty) {
-      return const Scaffold(
-        body: Center(
-          child: Text(
-            "No photos found.\nWaiting for sync...",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white),
+      return Scaffold(
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _openSettings,
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.photo_library_outlined, size: 64, color: Colors.white54),
+                SizedBox(height: 16),
+                Text(
+                  "No photos found",
+                  style: TextStyle(color: Colors.white, fontSize: 20),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "Tap center of screen to open settings",
+                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                ),
+              ],
+            ),
           ),
         ),
       );

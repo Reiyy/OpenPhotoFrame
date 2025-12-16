@@ -24,4 +24,8 @@ abstract class ConfigProvider {
   
   DateTime? get lastSuccessfulSync; // Timestamp of last successful sync
   set lastSuccessfulSync(DateTime? value);
+  
+  // Android specific settings
+  bool get autostartOnBoot; // Start app when device boots (Android only)
+  set autostartOnBoot(bool value);
 }

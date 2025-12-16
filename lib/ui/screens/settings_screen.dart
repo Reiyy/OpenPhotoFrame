@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/nextcloud_sync_service.dart';
+import '../../infrastructure/services/autostart_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _nextcloudUrlController;
   late int _syncIntervalMinutes;
   late bool _deleteOrphanedFiles;
+  late bool _autostartOnBoot;
   
   bool _isSyncing = false;
   String? _syncStatus;
@@ -25,6 +28,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isTestingConnection = false;
   String? _connectionTestResult;
   bool? _connectionTestSuccess;
+  
+  // Track original values to detect changes
+  late String _originalSyncType;
+  late String _originalNextcloudUrl;
   
   @override
   void initState() {
@@ -35,11 +42,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _syncType = config.activeSourceType.isEmpty ? 'none' : config.activeSourceType;
     _syncIntervalMinutes = config.syncIntervalMinutes;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
+    _autostartOnBoot = config.autostartOnBoot;
     
     final nextcloudConfig = config.getSourceConfig('nextcloud_link');
     _nextcloudUrlController = TextEditingController(
       text: nextcloudConfig['url'] ?? '',
     );
+    
+    // Store original values for comparison on save
+    _originalSyncType = _syncType;
+    _originalNextcloudUrl = nextcloudConfig['url'] ?? '';
   }
   
   @override
@@ -51,19 +63,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSettings() async {
     final config = context.read<ConfigProvider>();
     
+    // Detect if sync configuration changed
+    final newNextcloudUrl = _nextcloudUrlController.text.trim();
+    final syncConfigChanged = _syncType != _originalSyncType ||
+        (_syncType == 'nextcloud_link' && newNextcloudUrl != _originalNextcloudUrl);
+    final newSyncSourceConfigured = syncConfigChanged && 
+        _syncType == 'nextcloud_link' && 
+        newNextcloudUrl.isNotEmpty;
+    
     config.slideDurationSeconds = _slideDurationMinutes * 60;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
     config.activeSourceType = _syncType == 'none' ? '' : _syncType;
     config.syncIntervalMinutes = _syncIntervalMinutes;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
+    config.autostartOnBoot = _autostartOnBoot;
+    
+    // Sync autostart setting to SharedPreferences for BootReceiver
+    await AutostartService.setEnabled(_autostartOnBoot);
     
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', {
-        'url': _nextcloudUrlController.text.trim(),
+        'url': newNextcloudUrl,
       });
     }
     
     await config.save();
+    
+    // If a new sync source was configured, trigger an immediate sync
+    // This runs in the background (fire-and-forget) so the user can continue
+    if (newSyncSourceConfigured) {
+      final photoService = context.read<PhotoService>();
+      // Don't await - let it run in the background
+      photoService.triggerSync();
+    }
   }
 
   @override
@@ -163,6 +195,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
+          
+          // === ANDROID SETTINGS (only on Android) ===
+          if (Platform.isAndroid) ...[
+            _buildSectionHeader('Android'),
+            const SizedBox(height: 8),
+            
+            SwitchListTile(
+              title: const Text('Start on Boot'),
+              subtitle: const Text('Automatically start app when device boots'),
+              secondary: const Icon(Icons.power_settings_new),
+              value: _autostartOnBoot,
+              onChanged: (value) {
+                setState(() => _autostartOnBoot = value);
+              },
+            ),
+            
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+          ],
           
           // === ABOUT ===
           ListTile(

@@ -80,6 +80,15 @@ Tap the center of the screen during slideshow to open settings:
 | Sync Interval | Auto-sync frequency (disabled, or 5-60 min) |
 | Delete Orphaned Files | Remove local photos deleted from server |
 
+### 💡 Tip: Enter URL via ADB
+
+If typing the Nextcloud URL on a tablet is cumbersome, you can paste it via ADB:
+
+```bash
+# Focus the URL input field on the tablet, then run:
+adb shell input text 'https://cloud.example.com/s/YOUR_SHARE_TOKEN'
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
