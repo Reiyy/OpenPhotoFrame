@@ -19,11 +19,14 @@ class SlideshowScreen extends StatefulWidget {
   State<SlideshowScreen> createState() => _SlideshowScreenState();
 }
 
-class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderStateMixin {
+class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   PhotoEntry? _currentPhoto;
   Timer? _timer;
   bool _isLoading = true;
   StreamSubscription? _photosSubscription;
+  
+  // App lifecycle state
+  bool _isPaused = false;
   
   // Custom Stack for Transitions
   final List<_SlideItem> _slides = [];
@@ -45,6 +48,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
+    // Register lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+    
     // Keep screen on (Safe implementation for Linux/Dev)
     _enableWakelock();
     
@@ -53,6 +59,60 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       _initService();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        _pauseSlideshow();
+        break;
+      case AppLifecycleState.resumed:
+        _resumeSlideshow();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // App is being terminated or hidden, do nothing special
+        break;
+    }
+  }
+  
+  /// Pause slideshow when app goes to background
+  void _pauseSlideshow() {
+    // Don't pause if already paused or if display is off (night mode)
+    if (_isPaused || _isDisplayOff) return;
+    _isPaused = true;
+    
+    print('⏸️ App paused - stopping timers and wakelock');
+    _timer?.cancel();
+    _scheduleTimer?.cancel();
+    WakelockPlus.disable();
+  }
+  
+  /// Resume slideshow when app comes back to foreground
+  void _resumeSlideshow() {
+    if (!_isPaused) return;
+    _isPaused = false;
+    
+    print('▶️ App resumed - restarting timers and wakelock');
+    _enableWakelock();
+    
+    // Restart slideshow timer if we have photos
+    if (_currentPhoto != null) {
+      _startTimer();
+    }
+    
+    // Re-apply schedule state and restart schedule timer if enabled
+    if (_scheduleWasEnabled) {
+      _applyScheduleState();
+      _scheduleTimer?.cancel();
+      _scheduleTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        _applyScheduleState();
+      });
+    }
   }
 
   /// Update display schedule based on config settings.
@@ -345,6 +405,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _timer?.cancel();
     _photosSubscription?.cancel();
     _scheduleSubscription?.cancel();
