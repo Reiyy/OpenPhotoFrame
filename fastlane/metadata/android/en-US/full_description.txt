@@ -1,0 +1,21 @@
+OpenPhotoFrame is a free, open-source slideshow app that syncs photos from your private cloud (Nextcloud) or local storage. No ads, no subscriptions, no nag screens – just your photos.
+
+<b>Features:</b>
+
+• <b>Beautiful Slideshow</b> – Smooth crossfade transitions between your photos
+• <b>Nextcloud Sync</b> – Sync photos from a Nextcloud public share link (WebDAV)
+• <b>Local First</b> – Works offline, photos are cached locally
+• <b>Simple Settings</b> – Configure slide duration, transition speed, and sync interval
+• <b>Always On</b> – Designed to run 24/7 as a dedicated photo frame
+• <b>Privacy First</b> – Your photos stay on your server, no third-party cloud required
+
+<b>Why OpenPhotoFrame?</b>
+
+Existing apps like Fotoo or PhotoCloud Frame Slideshow are either riddled with ads and nag screens, require paid subscriptions for basic features, or force you to use public cloud services like Google Photos.
+
+OpenPhotoFrame is different:
+
+• 100% Free & Open Source (GPLv3)
+• No ads, no in-app purchases, no tracking
+• Works with your self-hosted Nextcloud
+• Simple & focused – does one thing well

@@ -1,0 +1,8 @@
+Initial release
+
+- Photo slideshow with smooth crossfade transitions
+- Nextcloud sync via public share link (WebDAV)
+- Local photo storage support
+- Configurable slide duration and transition speed
+- Auto-sync interval setting
+- Always-on display mode
