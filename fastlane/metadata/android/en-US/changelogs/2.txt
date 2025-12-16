@@ -1,0 +1,5 @@
+Day/Night Mode
+
+- Schedule display on/off times
+- Automatic screen wake and sleep
+- Device Admin support for reliable screen control
