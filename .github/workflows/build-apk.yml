@@ -37,6 +37,32 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Setup signing key
+        if: ${{ env.APK_SIGNING_KEY != '' }}
+        env:
+          APK_SIGNING_KEY: ${{ secrets.APK_SIGNING_KEY }}
+        run: |
+          # Write the private key directly (no base64 decoding needed)
+          echo "$APK_SIGNING_KEY" > /tmp/signing-key.pem
+          
+          # Create self-signed certificate (valid for 25 years)
+          openssl req -new -x509 -key /tmp/signing-key.pem -out /tmp/signing-cert.pem -days 9125 \
+            -subj "/CN=OpenPhotoFrame/O=micw/C=DE"
+          
+          # Create PKCS12 keystore
+          openssl pkcs12 -export -inkey /tmp/signing-key.pem -in /tmp/signing-cert.pem \
+            -out /tmp/keystore.p12 -name "release" -passout pass:android
+          
+          # Create key.properties for Gradle
+          cat > android/key.properties << EOF
+          storePassword=android
+          keyPassword=android
+          keyAlias=release
+          storeFile=/tmp/keystore.p12
+          EOF
+          
+          echo "SIGNING_CONFIGURED=true" >> $GITHUB_ENV
+
       - name: Build APK
         run: flutter build apk --release
 
