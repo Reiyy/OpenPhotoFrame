@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - master
-    # Releases will be enabled after I set up my key store
-    #tags:
-    #  - 'v*'
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
