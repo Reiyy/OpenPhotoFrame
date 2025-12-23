@@ -1,0 +1,7 @@
+Bugfixes and Improvements
+
+- Fixed repeated display of same images (improved selection algorithm)
+- Fixed wake-up reliability on Android (prevents crashes after deep sleep)
+- Fixed app restart after updates (alarms are now re-registered automatically)
+- Fixed image resolution on high-DPI displays
+- Fixed crashes on older tablets (e.g. Samsung SM-T700) by switching to Skia rendering
