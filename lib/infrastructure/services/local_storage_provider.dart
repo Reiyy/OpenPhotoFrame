@@ -33,9 +33,12 @@ class LocalStorageProvider implements StorageProvider {
   
   @override
   bool get isReadOnly {
-    // Read-only if custom path is set (local folder mode)
-    // Nextcloud sync uses internal app folder (read-write)
-    return _config.customPhotoPath != null && _config.customPhotoPath!.isNotEmpty;
+    // Read-only modes (no sync/delete allowed):
+    // 1. local_folder: User's external folder (customPhotoPath is set)
+    // 2. device_photos: MediaStore photos (managed by Android, not by us)
+    final hasCustomPath = _config.customPhotoPath != null && _config.customPhotoPath!.isNotEmpty;
+    final isDevicePhotos = _config.activeSourceType == 'device_photos';
+    return hasCustomPath || isDevicePhotos;
   }
   
   @override
