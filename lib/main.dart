@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
@@ -11,7 +12,7 @@ import 'domain/interfaces/storage_provider.dart';
 import 'domain/interfaces/photo_repository.dart';
 import 'domain/interfaces/display_controller.dart';
 import 'infrastructure/services/json_config_service.dart';
-import 'infrastructure/services/file_metadata_provider.dart';
+import 'infrastructure/services/exif_metadata_provider.dart';
 import 'infrastructure/services/nextcloud_sync_service.dart';
 import 'infrastructure/services/noop_sync_service.dart';
 import 'infrastructure/services/photo_service.dart';
@@ -37,6 +38,9 @@ void main() async {
   final configService = JsonConfigService();
   await configService.load();
 
+  // Initialize date formatting for all locales
+  await initializeDateFormatting();
+
   runApp(OpenPhotoFrameApp(configProvider: configService));
 }
 
@@ -57,7 +61,7 @@ class OpenPhotoFrameApp extends StatelessWidget {
           dispose: (_, storage) => (storage as LocalStorageProvider).dispose(),
         ),
         Provider<MetadataProvider>(
-          create: (_) => FileMetadataProvider(),
+          create: (_) => ExifMetadataProvider(),
         ),
         Provider<PlaylistStrategy>(
           create: (_) => WeightedFreshnessStrategy(),

@@ -147,11 +147,11 @@ class HybridPhotoRepository implements PhotoRepository {
           if (existingIndex != -1) {
             newPhotos.add(_photos[existingIndex]);
           } else {
-            final date = await _metadataProvider.getDate(file);
+            // Only get file stats (EXIF loaded lazily when displayed)
             final stat = await file.stat();
             newPhotos.add(PhotoEntry(
               file: file,
-              date: date,
+              date: stat.modified,  // File date for shuffle algorithm
               sizeBytes: stat.size,
             ));
           }
@@ -246,12 +246,23 @@ class HybridPhotoRepository implements PhotoRepository {
         if (existingIndex != -1) {
           newPhotos.add(_photos[existingIndex]);
         } else {
-          // sizeBytes: use 0 as we can't easily get file size from AssetEntity
-          newPhotos.add(PhotoEntry(
+          // Get GPS coordinates from AssetEntity if available (fast - no file I/O)
+          final latLng = await asset.latlngAsync();
+          final hasLocation = latLng != null && (latLng.latitude != 0 || latLng.longitude != 0);
+          
+          // For MediaStore: modifiedDateTime for shuffle, createDateTime as captureDate
+          final entry = PhotoEntry(
             file: file,
-            date: asset.createDateTime,
-            sizeBytes: 0,
-          ));
+            date: asset.modifiedDateTime,  // File date for shuffle algorithm
+            sizeBytes: asset.width * asset.height,  // Approximate size from dimensions
+          );
+          // Set EXIF data from MediaStore (already available, no need for lazy loading)
+          entry.setExifMetadata(
+            captureDate: asset.createDateTime,
+            latitude: hasLocation ? latLng.latitude : null,
+            longitude: hasLocation ? latLng.longitude : null,
+          );
+          newPhotos.add(entry);
         }
       }
       

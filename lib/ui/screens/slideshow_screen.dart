@@ -2,16 +2,23 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/display_controller.dart';
+import '../../domain/interfaces/metadata_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/native_display_controller.dart';
+import '../../infrastructure/services/geocoding_service.dart';
 import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
 import '../widgets/clock_overlay.dart';
+import '../widgets/photo_info_overlay.dart';
 import 'settings_screen.dart';
+
+final _log = Logger('SlideshowScreen');
+final _geocodingService = GeocodingService();
 
 class SlideshowScreen extends StatefulWidget {
   const SlideshowScreen({super.key});
@@ -45,6 +52,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   
   // Display off state for black overlay
   bool _isDisplayOff = false;
+  
+  // Current photo location name (from geocoding)
+  String? _currentLocationName;
 
   @override
   void initState() {
@@ -396,6 +406,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       slideDirection: slideDirection,
     );
 
+    // Log EXIF metadata when displaying a photo
+    _logPhotoMetadata(photo);
+
     setState(() {
       _isLoading = false;
       _currentPhoto = photo;
@@ -414,6 +427,62 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         });
       }
     });
+  }
+
+  /// Loads EXIF metadata lazily and logs it
+  Future<void> _logPhotoMetadata(PhotoEntry photo) async {
+    final config = context.read<ConfigProvider>();
+    
+    // Reset location name for new photo
+    if (mounted) {
+      setState(() => _currentLocationName = null);
+    }
+    
+    // Load EXIF data lazily if not already loaded
+    if (!photo.exifLoaded) {
+      try {
+        final metadataProvider = context.read<MetadataProvider>();
+        final exif = await metadataProvider.getExifMetadata(photo.file);
+        photo.setExifMetadata(
+          captureDate: exif.captureDate,
+          latitude: exif.location?.latitude,
+          longitude: exif.location?.longitude,
+        );
+        // Trigger rebuild to show updated EXIF data in overlay
+        if (mounted) setState(() {});
+      } catch (e) {
+        _log.warning('Failed to load EXIF for ${photo.file.path}: $e');
+        photo.setExifMetadata(); // Mark as loaded (with no data)
+      }
+    }
+    
+    final fileName = photo.file.path.split('/').last;
+    final buffer = StringBuffer('Displaying: $fileName');
+    
+    buffer.write(' | File date: ${photo.date}');
+    
+    if (photo.hasCaptureDate) {
+      buffer.write(' | Capture date: ${photo.captureDate}');
+    }
+    
+    if (photo.hasLocation) {
+      buffer.write(' | GPS: (${photo.latitude!.toStringAsFixed(4)}, ${photo.longitude!.toStringAsFixed(4)})');
+      
+      // Reverse geocode only if enabled in settings
+      if (config.geocodingEnabled) {
+        _geocodingService.getLocationName(photo.latitude!, photo.longitude!).then((location) {
+          if (location != null) {
+            _log.info('Location: $location');
+            // Update UI with location name
+            if (mounted && _currentPhoto == photo) {
+              setState(() => _currentLocationName = location);
+            }
+          }
+        });
+      }
+    }
+    
+    _log.info(buffer.toString());
   }
 
   /// Preloads an image and waits for it to be fully decoded
@@ -551,7 +620,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
               position: config.clockPosition,
             ),
 
-          // 3. Touch Layer (Invisible, on top)
+          // 3. Photo Info Overlay
+          if (config.showPhotoInfo && _currentPhoto != null)
+            PhotoInfoOverlay(
+              key: ValueKey('photo_info_${_currentPhoto!.file.path}_${config.photoInfoPosition}'),
+              photo: _currentPhoto!,
+              position: config.photoInfoPosition,
+              locationName: config.geocodingEnabled ? _currentLocationName : null,
+            ),
+
+          // 4. Touch Layer (Invisible, on top)
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -586,7 +664,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
             ),
           ),
           
-          // 4. Black overlay when display is "off" (for LCD displays)
+          // 5. Black overlay when display is "off" (for LCD displays)
           // Uses IgnorePointer so touch events pass through to the layer below
           if (_isDisplayOff)
             Positioned.fill(

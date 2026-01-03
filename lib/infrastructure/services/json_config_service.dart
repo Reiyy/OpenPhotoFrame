@@ -237,4 +237,30 @@ class JsonConfigService extends ConfigProvider {
       _config['custom_photo_path'] = value;
     }
   }
+  
+  // Photo info overlay settings
+  @override
+  bool get showPhotoInfo => _config['show_photo_info'] ?? false;
+  
+  @override
+  set showPhotoInfo(bool value) {
+    _config['show_photo_info'] = value;
+  }
+  
+  @override
+  String get photoInfoPosition => _config['photo_info_position'] ?? 'bottomLeft';
+  
+  @override
+  set photoInfoPosition(String value) {
+    _config['photo_info_position'] = value;
+  }
+  
+  // Geocoding settings
+  @override
+  bool get geocodingEnabled => _config['geocoding_enabled'] ?? false;
+  
+  @override
+  set geocodingEnabled(bool value) {
+    _config['geocoding_enabled'] = value;
+  }
 }

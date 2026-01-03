@@ -34,6 +34,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late String _clockSize;
   late String _clockPosition;
   
+  // Photo info settings
+  late bool _showPhotoInfo;
+  late String _photoInfoPosition;
+  late bool _geocodingEnabled;
+  
   // Display schedule settings
   late bool _scheduleEnabled;
   late TimeOfDay _dayStartTime;
@@ -80,6 +85,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _showClock = config.showClock;
     _clockSize = config.clockSize;
     _clockPosition = config.clockPosition;
+    
+    // Photo info settings
+    _showPhotoInfo = config.showPhotoInfo;
+    _photoInfoPosition = config.photoInfoPosition;
+    _geocodingEnabled = config.geocodingEnabled;
     
     // Display schedule settings
     _scheduleEnabled = config.scheduleEnabled;
@@ -173,6 +183,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.showClock = _showClock;
     config.clockSize = _clockSize;
     config.clockPosition = _clockPosition;
+    
+    // Photo info settings
+    config.showPhotoInfo = _showPhotoInfo;
+    config.photoInfoPosition = _photoInfoPosition;
+    config.geocodingEnabled = _geocodingEnabled;
     
     // Display schedule settings
     config.scheduleEnabled = _scheduleEnabled;
@@ -279,6 +294,47 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildClockSizeSelector(),
             const SizedBox(height: 8),
             _buildClockPositionSelector(),
+          ],
+          
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          // === PHOTO INFO SETTINGS ===
+          _buildSectionHeader('Photo Information'),
+          const SizedBox(height: 8),
+          
+          SwitchListTile(
+            title: const Text('Show Photo Info'),
+            subtitle: const Text('Display date and location on slideshow'),
+            secondary: const Icon(Icons.info_outline),
+            value: _showPhotoInfo,
+            onChanged: (value) {
+              setState(() => _showPhotoInfo = value);
+            },
+          ),
+          
+          if (_showPhotoInfo) ...[
+            const SizedBox(height: 8),
+            _buildPhotoInfoPositionSelector(),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Resolve Location Names'),
+              subtitle: const Text('Use OpenStreetMap to show place names instead of coordinates'),
+              secondary: const Icon(Icons.location_on),
+              value: _geocodingEnabled,
+              onChanged: (value) {
+                setState(() => _geocodingEnabled = value);
+              },
+            ),
+            if (_geocodingEnabled)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Uses Nominatim (OpenStreetMap). No API key required.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
           ],
           
           const SizedBox(height: 24),
@@ -1294,5 +1350,89 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+  
+  Widget _buildPhotoInfoPositionSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.grid_view, size: 20),
+              const SizedBox(width: 12),
+              const Text('Position'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Container(
+              width: 160,
+              height: 100,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Stack(
+                children: [
+                  // Top Left
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: _buildPhotoInfoPositionButton('topLeft', '⌜'),
+                  ),
+                  // Top Right
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildPhotoInfoPositionButton('topRight', '⌝'),
+                  ),
+                  // Bottom Left
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: _buildPhotoInfoPositionButton('bottomLeft', '⌞'),
+                  ),
+                  // Bottom Right
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: _buildPhotoInfoPositionButton('bottomRight', '⌟'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPhotoInfoPositionButton(String position, String label) {
+    final isSelected = _photoInfoPosition == position;
+    return GestureDetector(
+      onTap: () => setState(() => _photoInfoPosition = position),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: isSelected ? Colors.white : Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

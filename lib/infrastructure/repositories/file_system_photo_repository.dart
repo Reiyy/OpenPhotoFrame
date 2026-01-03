@@ -109,15 +109,14 @@ class FileSystemPhotoRepository implements PhotoRepository {
 
           if (existingIndex != -1) {
             // File already exists - preserve the existing PhotoEntry instance
-            // to maintain runtime state (lastShown, weight)
+            // to maintain runtime state (lastShown, weight, exif)
             newPhotos.add(_photos[existingIndex]);
           } else {
-            // New file - load metadata and create new entry
-            final date = await _metadataProvider.getDate(file);
+            // New file - only get file stats (EXIF loaded lazily when displayed)
             final stat = await file.stat();
             newPhotos.add(PhotoEntry(
               file: file,
-              date: date,
+              date: stat.modified,  // File date for shuffle algorithm
               sizeBytes: stat.size,
             ));
           }

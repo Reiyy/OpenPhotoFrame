@@ -34,7 +34,7 @@ class MockStorageProvider implements StorageProvider {
 
 class MockMetadataProvider implements MetadataProvider {
   @override
-  Future<DateTime> getDate(File file) async => DateTime.now();
+  Future<ExifMetadata> getExifMetadata(File file) async => const ExifMetadata();
 }
 
 void main() {

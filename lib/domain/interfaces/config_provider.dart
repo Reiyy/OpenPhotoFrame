@@ -63,4 +63,15 @@ abstract class ConfigProvider extends ChangeNotifier {
   // Custom photo directory (for "local folder" mode)
   String? get customPhotoPath; // null = use internal app folder, otherwise external path
   set customPhotoPath(String? value);
+  
+  // Photo info overlay settings
+  bool get showPhotoInfo; // Show photo info overlay (date, location)
+  set showPhotoInfo(bool value);
+  
+  String get photoInfoPosition; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
+  set photoInfoPosition(String value);
+  
+  // Geocoding settings
+  bool get geocodingEnabled; // Enable reverse geocoding for GPS coordinates
+  set geocodingEnabled(bool value);
 }
