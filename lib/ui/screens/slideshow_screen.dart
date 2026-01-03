@@ -623,9 +623,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
           // 3. Photo Info Overlay
           if (config.showPhotoInfo && _currentPhoto != null)
             PhotoInfoOverlay(
-              key: ValueKey('photo_info_${_currentPhoto!.file.path}_${config.photoInfoPosition}'),
+              key: ValueKey('photo_info_${_currentPhoto!.file.path}_${config.photoInfoPosition}_${config.photoInfoSize}'),
               photo: _currentPhoto!,
               position: config.photoInfoPosition,
+              size: config.photoInfoSize,
               locationName: config.geocodingEnabled ? _currentLocationName : null,
             ),
 

@@ -1,0 +1,6 @@
+New features:
+- Display photo metadata overlay (capture date, GPS location with reverse geocoding)
+- Settings dialog no longer forces full screen mode
+
+Bug fixes:
+- Fixed issue where slideshow would switch images every time new photos were downloaded from Nextcloud

@@ -255,6 +255,14 @@ class JsonConfigService extends ConfigProvider {
     _config['photo_info_position'] = value;
   }
   
+  @override
+  String get photoInfoSize => _config['photo_info_size'] ?? 'small';
+  
+  @override
+  set photoInfoSize(String value) {
+    _config['photo_info_size'] = value;
+  }
+  
   // Geocoding settings
   @override
   bool get geocodingEnabled => _config['geocoding_enabled'] ?? false;

@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   // Photo info settings
   late bool _showPhotoInfo;
   late String _photoInfoPosition;
+  late String _photoInfoSize;
   late bool _geocodingEnabled;
   
   // Display schedule settings
@@ -96,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Photo info settings
     _showPhotoInfo = config.showPhotoInfo;
     _photoInfoPosition = config.photoInfoPosition;
+    _photoInfoSize = config.photoInfoSize;
     _geocodingEnabled = config.geocodingEnabled;
     
     // Display schedule settings
@@ -194,6 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Photo info settings
     config.showPhotoInfo = _showPhotoInfo;
     config.photoInfoPosition = _photoInfoPosition;
+    config.photoInfoSize = _photoInfoSize;
     config.geocodingEnabled = _geocodingEnabled;
     
     // Display schedule settings
@@ -324,6 +327,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           if (_showPhotoInfo) ...[
             const SizedBox(height: 8),
             _buildPhotoInfoPositionSelector(),
+            const SizedBox(height: 8),
+            _buildPhotoInfoSizeSelector(),
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Resolve Location Names'),
@@ -1359,6 +1364,31 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     return '$hour:$minute';
   }
   
+  Widget _buildPhotoInfoSizeSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.format_size, size: 20),
+          const SizedBox(width: 12),
+          const Text('Size'),
+          const Spacer(),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'small', label: Text('S')),
+              ButtonSegment(value: 'medium', label: Text('M')),
+              ButtonSegment(value: 'large', label: Text('L')),
+            ],
+            selected: {_photoInfoSize},
+            onSelectionChanged: (value) {
+              setState(() => _photoInfoSize = value.first);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPhotoInfoPositionSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

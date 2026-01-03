@@ -71,6 +71,9 @@ abstract class ConfigProvider extends ChangeNotifier {
   String get photoInfoPosition; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
   set photoInfoPosition(String value);
   
+  String get photoInfoSize; // 'small', 'medium', 'large'
+  set photoInfoSize(String value);
+  
   // Geocoding settings
   bool get geocodingEnabled; // Enable reverse geocoding for GPS coordinates
   set geocodingEnabled(bool value);

@@ -7,12 +7,14 @@ import '../../domain/models/photo_entry.dart';
 class PhotoInfoOverlay extends StatelessWidget {
   final PhotoEntry photo;
   final String position; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
+  final String size; // 'small', 'medium', 'large'
   final String? locationName; // Resolved location name from geocoding
 
   const PhotoInfoOverlay({
     super.key,
     required this.photo,
     required this.position,
+    this.size = 'small',
     this.locationName,
   });
 
@@ -68,14 +70,13 @@ class PhotoInfoOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use capture date if available, otherwise file date
-    final displayDate = photo.captureDate ?? photo.date;
-    
     // Build info lines
     final List<String> infoLines = [];
     
-    // Add date
-    infoLines.add(_formatDate(displayDate));
+    // Add capture date only if available from EXIF (no fallback to file date)
+    if (photo.captureDate != null) {
+      infoLines.add(_formatDate(photo.captureDate!));
+    }
     
     // Add location if available
     if (locationName != null && locationName!.isNotEmpty) {
@@ -99,14 +100,26 @@ class PhotoInfoOverlay extends StatelessWidget {
     );
   }
 
+  double get _fontSize {
+    switch (size) {
+      case 'large':
+        return 32;
+      case 'medium':
+        return 26;
+      case 'small':
+      default:
+        return 20;
+    }
+  }
+
   Widget _buildTextLine(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 20,
+      style: TextStyle(
+        fontSize: _fontSize,
         fontWeight: FontWeight.w400,
         color: Colors.white,
-        shadows: [
+        shadows: const [
           // Shadow for readability on any background
           Shadow(
             offset: Offset(1, 1),
