@@ -1,34 +1,34 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:exif/exif.dart';
+import 'package:exif_reader/exif_reader.dart';
 import 'package:logging/logging.dart';
 import '../../domain/interfaces/metadata_provider.dart';
 
 /// MetadataProvider that extracts EXIF data (capture date, GPS) from photos.
-/// Only reads the first 64KB of the file for performance (EXIF is at the start).
+/// Only reads the first 512KB of the file for performance (EXIF is typically at the start).
 class ExifMetadataProvider implements MetadataProvider {
   final _log = Logger('ExifMetadataProvider');
   
-  /// Maximum bytes to read for EXIF data (64KB should be enough for all EXIF)
-  static const int _maxExifBytes = 64 * 1024;
+  /// Maximum bytes to read for EXIF data (512KB ensures we catch all GPS data)
+  static const int _maxExifBytes = 512 * 1024;
 
   @override
   Future<ExifMetadata> getExifMetadata(File file) async {
     try {
-      // Only read first 64KB - EXIF is always at the start of the file
+      // Only read first 512KB - EXIF is typically at the start of the file
       final bytes = await _readFirstBytes(file, _maxExifBytes);
-      final exifData = await readExifFromBytes(bytes);
+      final exifResult = await readExifFromBytes(bytes);
 
-      if (exifData.isEmpty) {
+      if (exifResult.tags.isEmpty) {
         _log.fine('No EXIF data in ${file.path}');
         return const ExifMetadata();
       }
 
       // Extract capture date (optional)
-      final captureDate = _extractCaptureDate(exifData);
+      final captureDate = _extractCaptureDate(exifResult.tags);
 
       // Extract GPS coordinates (optional)
-      final location = _extractGpsCoordinates(exifData);
+      final location = _extractGpsCoordinates(exifResult.tags);
 
       return ExifMetadata(captureDate: captureDate, location: location);
     } catch (e) {
@@ -43,7 +43,7 @@ class ExifMetadataProvider implements MetadataProvider {
     try {
       final length = await raf.length();
       final bytesToRead = length < maxBytes ? length : maxBytes;
-      return await raf.read(bytesToRead);
+      return Uint8List.fromList(await raf.read(bytesToRead));
     } finally {
       await raf.close();
     }
