@@ -66,8 +66,12 @@ jobs:
           storeFile=/tmp/keystore.p12
           EOF
 
-      - name: Build APK
+      - name: Build Release APK
         run: flutter build apk --release --split-per-abi
+
+      - name: Build Debug APK (dev builds only)
+        if: github.ref == 'refs/heads/master'
+        run: flutter build apk --debug
 
       - name: Rename APKs
         run: |
@@ -90,6 +94,10 @@ jobs:
                 mv "${APK_DIR}/app-${abi}-release.apk" "${APK_DIR}/OpenPhotoFrame-${VERSION}-dev-${COMMIT_COUNT}-${abi}.apk"
               fi
             done
+            # Rename debug APK
+            if [[ -f "${APK_DIR}/app-debug.apk" ]]; then
+              mv "${APK_DIR}/app-debug.apk" "${APK_DIR}/OpenPhotoFrame-${VERSION}-dev-${COMMIT_COUNT}-debug.apk"
+            fi
             echo "APK_PATTERN=OpenPhotoFrame-${VERSION}-dev-${COMMIT_COUNT}-*.apk" >> $GITHUB_ENV
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
