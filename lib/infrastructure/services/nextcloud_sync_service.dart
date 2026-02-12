@@ -28,11 +28,20 @@ class NextcloudSyncService implements SyncProvider {
     HttpOverrides.global = _NoCheckHttpOverrides();
   }
 
+  factory NextcloudSyncService.fromPublicLink(String url, StorageProvider storageProvider) {
+    if (url.isEmpty) {
+      throw ArgumentError('WebDAV URL cannot be empty');
+    }
+
+    return NextcloudSyncService(
+      webDavUrl: url,
+      storageProvider: storageProvider,
+    );
+  }
+
   @override
   String get id => 'webdav';
 
-  /// 测试连接
-  /// 成功返回 null，失败返回错误字符串
   static Future<String?> testConnection(String url) async {
     final log = Logger('NextcloudSyncService');
 
