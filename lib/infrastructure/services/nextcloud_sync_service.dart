@@ -4,7 +4,7 @@ import 'package:webdav_client/webdav_client.dart' as webdav;
 import '../../domain/interfaces/sync_provider.dart';
 import '../../domain/interfaces/storage_provider.dart';
 
-/// 关闭 HTTPS 证书校验
+/// 全局关闭 HTTPS 证书校验
 class _NoCheckHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -14,18 +14,17 @@ class _NoCheckHttpOverrides extends HttpOverrides {
   }
 }
 
-class WebDavSyncService implements SyncProvider {
+class NextcloudSyncService implements SyncProvider {
   final String webDavUrl;
   final String remotePath;
   final StorageProvider _storageProvider;
-  final _log = Logger('WebDavSyncService');
+  final _log = Logger('NextcloudSyncService');
 
-  WebDavSyncService({
+  NextcloudSyncService({
     required this.webDavUrl,
     required StorageProvider storageProvider,
     this.remotePath = '/',
   }) : _storageProvider = storageProvider {
-    // 关闭证书校验
     HttpOverrides.global = _NoCheckHttpOverrides();
   }
 
@@ -35,7 +34,7 @@ class WebDavSyncService implements SyncProvider {
   /// 测试连接
   /// 成功返回 null，失败返回错误字符串
   static Future<String?> testConnection(String url) async {
-    final log = Logger('WebDavSyncService');
+    final log = Logger('NextcloudSyncService');
 
     if (url.isEmpty) {
       return 'URL is empty';
